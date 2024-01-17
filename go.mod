@@ -1,6 +1,6 @@
 module github.com/ttys3/consul-slack
 
-go 1.21
+go 1.23
 
 require (
 	github.com/bwmarrin/discordgo v0.28.1

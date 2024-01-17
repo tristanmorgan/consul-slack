@@ -1,33 +1,21 @@
-FROM ubuntu:24.04
+FROM golang:alpine AS build
 
-COPY consul-slack  /usr/local/bin/
+RUN apk add --no-cache git alpine-sdk
 
-RUN mkdir /etc/consul-slack; \
-    apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates tzdata; \
-    update-ca-certificates -f; \
-    apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
-    apt autoremove -y; \
-    rm -rf /var/lib/apt/lists/*
+WORKDIR $GOPATH/src/github.com/ttys3/consul-slack
 
-# Add Tini
-ENV TINI_VERSION v0.19.0
-ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
-RUN chmod +x /tini
+COPY . .
 
-WORKDIR /usr/local/bin/
+RUN go mod tidy
 
-# github.com/hashicorp/consul/api@v1.12.0/api.go
-ENV TZ=Asia/Shanghai \
-    HEALTH_CHECK_ADDR=:8080 \
-    SLACK_WEBHOOK_URL="" \
-    CONSUL_HTTP_ADDR="" \
-    CONSUL_HTTP_SSL=false \
-    CONSUL_CACERT="" \
-    CONSUL_CLIENT_KEY="" \
-    CONSUL_CLIENT_CERT="" \
-    CONSUL_TLS_SERVER_NAME="" \
-    CONSUL_HTTP_SSL_VERIFY=false
+RUN CGO_ENABLED="0" go build -trimpath -ldflags="-s -w" -a -o /consul-slack
 
-ENTRYPOINT ["/tini", "--"]
-# Run your program under Tini
-CMD ["/usr/local/bin/consul-slack"]
+FROM scratch
+
+WORKDIR /
+
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=build /consul-slack consul-slack
+
+ENTRYPOINT [ "./consul-slack" ]
+
