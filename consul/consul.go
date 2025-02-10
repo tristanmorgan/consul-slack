@@ -230,7 +230,7 @@ func (c *Consul) watch() {
 			c.events <- (*Event)(hc)
 		}
 
-		for id, _ := range state {
+		for id := range state {
 			if _, ok := hcs[id]; !ok {
 				save = true
 				delete(state, id)
